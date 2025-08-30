@@ -1,36 +1,14 @@
 "use client"
 
 import { useRef, useState, useCallback } from "react"
-import type { Mesh } from "three"
 import { useFrame, useThree } from "@react-three/fiber"
-import Plant, { type PlantType } from "./Plant"
-import type { Tool } from "./Scene"
+import Plant from "./Plant"
 
-interface GardenProps {
-  activeTool: Tool
-  onToolUse?: (tool: Tool, success: boolean) => void
-  onPlantInteraction?: (plantId: number, action: string) => void
-}
-
-interface PlantData {
-  id: number
-  position: [number, number, number]
-  type: PlantType
-}
-
-interface GameStats {
-  plantsGrown: number
-  plantsCut: number
-  plantsPlanted: number
-  totalWaterUsed: number
-  gardenScore: number
-}
-
-export default function Garden({ activeTool, onToolUse, onPlantInteraction }: GardenProps) {
-  const groundRef = useRef<Mesh>(null)
+export default function Garden({ activeTool, onToolUse, onPlantInteraction }) {
+  const groundRef = useRef(null)
   const { raycaster, camera, scene, pointer, gl } = useThree()
 
-  const [plants, setPlants] = useState<PlantData[]>([
+  const [plants, setPlants] = useState([
     { id: 1, position: [2, 0, 2], type: "flower" },
     { id: 2, position: [-2, 0, 1], type: "bush" },
     { id: 3, position: [0, 0, -2], type: "tree" },
@@ -38,7 +16,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
     { id: 5, position: [-3, 0, -2], type: "flower" },
   ])
 
-  const [gameStats, setGameStats] = useState<GameStats>({
+  const [gameStats, setGameStats] = useState({
     plantsGrown: 0,
     plantsCut: 0,
     plantsPlanted: 0,
@@ -46,15 +24,15 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
     gardenScore: 0,
   })
 
-  const [hoveredObject, setHoveredObject] = useState<string | null>(null)
-  const [clickIndicator, setClickIndicator] = useState<{ position: [number, number, number]; visible: boolean }>({
+  const [hoveredObject, setHoveredObject] = useState(null)
+  const [clickIndicator, setClickIndicator] = useState({
     position: [0, 0, 0],
     visible: false,
   })
 
-  const getRandomPlantType = (): PlantType => {
-    const types: PlantType[] = ["flower", "tree", "bush", "herb"]
-    const weights = [0.4, 0.2, 0.25, 0.15] // Probabilidades diferentes para cada tipo
+  const getRandomPlantType = () => {
+    const types = ["flower", "tree", "bush", "herb"]
+    const weights = [0.4, 0.2, 0.25, 0.15] // Probabilidades
     const random = Math.random()
     let sum = 0
 
@@ -65,14 +43,14 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
     return "flower"
   }
 
-  const showClickIndicator = useCallback((position: [number, number, number]) => {
+  const showClickIndicator = useCallback((position) => {
     setClickIndicator({ position, visible: true })
     setTimeout(() => {
       setClickIndicator((prev) => ({ ...prev, visible: false }))
     }, 1000)
   }, [])
 
-  const updateGameStats = useCallback((action: string, plantType?: PlantType) => {
+  const updateGameStats = useCallback((action) => {
     setGameStats((prev) => {
       const newStats = { ...prev }
 
@@ -97,7 +75,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
   }, [])
 
   const handleGroundClick = useCallback(
-    (event: any) => {
+    (event) => {
       if (activeTool !== "semillas") return
 
       event.stopPropagation()
@@ -111,13 +89,15 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
 
       // Verificar que no hay una planta muy cerca
       const tooClose = plants.some((plant) => {
-        const distance = Math.sqrt(Math.pow(plant.position[0] - point.x, 2) + Math.pow(plant.position[2] - point.z, 2))
-        return distance < 1.2 // Reducido para permitir jardines más densos
+        const distance = Math.sqrt(
+          Math.pow(plant.position[0] - point.x, 2) + Math.pow(plant.position[2] - point.z, 2)
+        )
+        return distance < 1.2
       })
 
       if (!tooClose) {
         const plantType = getRandomPlantType()
-        const newPlant: PlantData = {
+        const newPlant = {
           id: Date.now(),
           position: [point.x, 0, point.z],
           type: plantType,
@@ -135,7 +115,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
   )
 
   const removePlant = useCallback(
-    (plantId: number) => {
+    (plantId) => {
       const plant = plants.find((p) => p.id === plantId)
       if (plant) {
         updateGameStats("cut", plant.type)
@@ -147,7 +127,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
   )
 
   const handlePlantWatered = useCallback(
-    (plantId: number, plantType: PlantType) => {
+    (plantId, plantType) => {
       updateGameStats("water", plantType)
       onPlantInteraction?.(plantId, "watered")
       onToolUse?.("regadera", true)
@@ -156,7 +136,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
   )
 
   const handlePlantCut = useCallback(
-    (plantId: number, plantType: PlantType) => {
+    (plantId, plantType) => {
       updateGameStats("cut", plantType)
       onPlantInteraction?.(plantId, "cut")
       onToolUse?.("tijeras", true)
@@ -164,8 +144,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
     [updateGameStats, onPlantInteraction, onToolUse],
   )
 
-  // Detección de hover mejorada
-  const handlePointerMove = useCallback((event: any) => {
+  const handlePointerMove = useCallback((event) => {
     if (event.intersections.length > 0) {
       const intersection = event.intersections[0]
       if (intersection.object.userData?.type === "plant") {
@@ -180,12 +159,9 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
     }
   }, [])
 
-  // Animación sutil del suelo con efectos de hover
   useFrame((state) => {
     if (groundRef.current) {
       groundRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.01
-
-      // Efecto de brillo cuando se hace hover
       if (hoveredObject === "ground" && activeTool === "semillas") {
         groundRef.current.material.opacity = 0.95
       } else {
@@ -196,7 +172,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
 
   return (
     <group onPointerMove={handlePointerMove}>
-      {/* Suelo interactivo mejorado */}
+      {/* Suelo */}
       <mesh
         ref={groundRef}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -213,7 +189,6 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
         />
       </mesh>
 
-      {/* Indicador de área plantable */}
       {hoveredObject === "ground" && activeTool === "semillas" && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
           <ringGeometry args={[7.5, 8, 32]} />
@@ -221,7 +196,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
         </mesh>
       )}
 
-      {/* Bordes del jardín */}
+      {/* Bordes */}
       <group>
         <mesh position={[0, 0.1, -10]} castShadow>
           <boxGeometry args={[20, 0.2, 0.5]} />
@@ -241,7 +216,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
         </mesh>
       </group>
 
-      {/* Elementos decorativos */}
+      {/* Rocas */}
       <group>
         <mesh position={[7, 0.15, 7]} castShadow>
           <sphereGeometry args={[0.3, 8, 6]} />
@@ -265,7 +240,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
         </mesh>
       )}
 
-      {/* Plantas con callbacks mejorados */}
+      {/* Plantas */}
       {plants.map((plant) => (
         <Plant
           key={plant.id}
@@ -280,7 +255,7 @@ export default function Garden({ activeTool, onToolUse, onPlantInteraction }: Ga
         />
       ))}
 
-      {/* Panel de estadísticas del jardín */}
+      {/* Panel invisible */}
       <mesh position={[9, 2, 0]}>
         <planeGeometry args={[3, 4]} />
         <meshBasicMaterial transparent opacity={0} />
